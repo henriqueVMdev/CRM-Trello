@@ -1,0 +1,10 @@
+{
+  "name": "hrb-crm-sidecar",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "start": "node index.js", "test": "node --test" },
+  "dependencies": {
+    "baileys": "7.0.0-rc14"
+  }
+}
