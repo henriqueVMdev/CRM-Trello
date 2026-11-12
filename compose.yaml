@@ -1,0 +1,54 @@
+# Fase 0: ponte e proteção. Nenhuma porta publicada: tudo fala pela rede interna.
+# Os volumes ficam no disco cifrado da VPS (ver docs/operacao.md).
+name: hrb-crm
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD_FILE: /run/secrets/spring.datasource.password
+    secrets: [spring.datasource.password]
+    volumes: [banco:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "crm", "-d", "crm"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/crm
+      SPRING_DATASOURCE_USERNAME: crm
+      CRM_RETENCAO_DIAS: ${CRM_RETENCAO_DIAS:?defina CRM_RETENCAO_DIAS no .env}
+    secrets: [spring.datasource.password, crm.sidecar-segredo, crm.alerta-url]
+    volumes: [midia:/dados/midia]
+
+  # Um sidecar por número. Para o segundo número, copie o bloco com outro NUMERO e outros volumes.
+  sidecar-1:
+    build: ./sidecar
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      NUMERO: ${NUMERO_1:?defina NUMERO_1 no .env}
+      SEGREDO_ARQUIVO: /run/secrets/crm.sidecar-segredo
+    secrets: [crm.sidecar-segredo]
+    volumes:
+      - sessao-1:/sessao
+      - fila-1:/fila
+
+secrets:
+  spring.datasource.password: { file: ./segredos/db_senha }
+  crm.sidecar-segredo: { file: ./segredos/sidecar_segredo }
+  crm.alerta-url: { file: ./segredos/alerta_url }
+
+volumes:
+  banco:
+  midia:
+  sessao-1:
+  fila-1:
