@@ -1,0 +1,10 @@
+# segredos nunca entram no repositório
+segredos/
+.env
+
+node_modules/
+target/
+
+# documentação da operação da HRB fica fora do git (repositório público)
+AGENTS.md
+docs/
