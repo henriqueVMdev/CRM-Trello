@@ -223,6 +223,7 @@ class FaseZeroTest {
         enviar(comData(midiaMsg("V1", "111@lid", compartilhada), velho), compartilhada);
         enviar(comData(midiaMsg("V2", "111@lid", soVelha), velho), soVelha);
         enviar(comData(midiaMsg("N1", "222@lid", compartilhada), novo), compartilhada);
+        db.sql("update contato set visto_em = now() - interval '31 days' where lid = '111@lid'").update();
 
         assertThat(retencao.apagar()).isEqualTo(2);
 
@@ -231,6 +232,22 @@ class FaseZeroTest {
         assertThat(contar("midia")).isEqualTo(1);
         assertThat(arquivo(compartilhada)).exists();
         assertThat(arquivo(soVelha)).doesNotExist();
+    }
+
+    @Test
+    void mapaLidSemMensagemSobreviveARetencaoAteVencer() throws Exception {
+        enviar("{\"v\": 1, \"tipo\": \"lid\", \"lid\": \"777@lid\", \"pn\": \"5511988887777@s.whatsapp.net\"}", null)
+                .andExpect(status().isOk());
+
+        retencao.apagar();
+        enviar(mensagem("A1", "777@lid", null, false, "{\"conversation\": \"oi\"}", null), null);
+        assertThat(db.sql("select telefone from mensagem m join contato c on c.id = m.contato_id").query(String.class).single())
+                .isEqualTo("5511988887777");
+
+        enviar("{\"v\": 1, \"tipo\": \"lid\", \"lid\": \"888@lid\", \"pn\": \"5511977776666@s.whatsapp.net\"}", null);
+        db.sql("update contato set visto_em = now() - interval '31 days' where lid = '888@lid'").update();
+        retencao.apagar();
+        assertThat(db.sql("select lid from contato").query(String.class).list()).containsExactly("777@lid");
     }
 
     @Test

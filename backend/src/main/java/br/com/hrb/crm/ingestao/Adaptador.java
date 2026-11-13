@@ -136,7 +136,7 @@ public class Adaptador {
             return db.sql("insert into contato (lid, telefone, nome) values (?, ?, ?) returning id")
                     .params(lid, telefone, nome).query(Long.class).single();
         }
-        db.sql("update contato set lid = coalesce(lid, ?), telefone = coalesce(telefone, ?), nome = coalesce(?, nome) where id = ?")
+        db.sql("update contato set lid = coalesce(lid, ?), telefone = coalesce(telefone, ?), nome = coalesce(?, nome), visto_em = now() where id = ?")
                 .params(lid, telefone, nome, id).update();
         return id;
     }

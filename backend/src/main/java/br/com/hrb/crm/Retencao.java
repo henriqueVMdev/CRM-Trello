@@ -37,7 +37,8 @@ class Retencao {
                 select distinct d.caminho from midia d join mensagem m on m.id = d.mensagem_id where m.data < ?""")
                 .param(limite).query(String.class).list();
         int mensagens = db.sql("delete from mensagem where data < ?").param(limite).update(); // midia cai em cascata
-        int contatos = db.sql("delete from contato c where not exists (select 1 from mensagem m where m.contato_id = c.id)").update();
+        int contatos = db.sql("delete from contato c where visto_em < ? and not exists (select 1 from mensagem m where m.contato_id = c.id)")
+                .param(limite).update();
 
         int arquivos = 0;
         for (String caminho : caminhos) {
