@@ -2,6 +2,7 @@ package br.com.hrb.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -304,6 +305,12 @@ class FaseZeroTest {
         assertThat(PINGS).containsExactly("POST /ping/abc/fail "
                 + "Vendas 1: sem pulso do sidecar há mais de 10 min (sidecar parado ou fila acumulando)\n"
                 + "Vendas 1: 2 evento(s) recusado(s) em /fila/rejeitados");
+    }
+
+    @Test
+    void semTrelloConfiguradoNaoExisteRotaDeWebhook() throws Exception {
+        mvc.perform(post("/trello/webhook").content("{}"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
