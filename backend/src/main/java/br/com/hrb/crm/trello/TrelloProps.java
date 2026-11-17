@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.util.unit.DataSize;
 import org.springframework.validation.annotation.Validated;
 
 /**
@@ -27,5 +28,7 @@ public record TrelloProps(
         @NotBlank String callbackUrl,
         /** ID de membro do usuário do sync: ação dele no quadro é eco do próprio sync */
         @NotBlank String usuarioSyncId,
-        @DefaultValue("https://api.trello.com/1") URI apiUrl) {
+        @DefaultValue("https://api.trello.com/1") URI apiUrl,
+        /** teto do corpo do webhook; o payload real do Trello fica em poucos KB */
+        @DefaultValue("256KB") DataSize corpoMax) {
 }

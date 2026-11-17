@@ -52,7 +52,8 @@ class TrelloClienteTest {
         trello.start();
         URI api = URI.create("http://127.0.0.1:" + trello.getAddress().getPort() + "/1");
         cliente = new TrelloCliente(JsonMapper.builder().build(),
-                new TrelloProps("chave1", "token1", "segredo", "https://x/trello/webhook", "sync", api));
+                new TrelloProps("chave1", "token1", "segredo", "https://x/trello/webhook", "sync", api,
+                        org.springframework.util.unit.DataSize.ofKilobytes(256)));
         cliente.esperaInicial = Duration.ofMillis(10);
     }
 

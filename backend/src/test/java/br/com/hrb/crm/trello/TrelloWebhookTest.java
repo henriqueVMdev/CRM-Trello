@@ -36,7 +36,8 @@ import br.com.hrb.crm.TestcontainersConfiguration;
         "crm.trello.token=token",
         "crm.trello.segredo-app=" + TrelloWebhookTest.SEGREDO,
         "crm.trello.callback-url=" + TrelloWebhookTest.CALLBACK,
-        "crm.trello.usuario-sync-id=" + TrelloWebhookTest.SYNC})
+        "crm.trello.usuario-sync-id=" + TrelloWebhookTest.SYNC,
+        "crm.trello.corpo-max=1KB"})
 @AutoConfigureMockMvc
 class TrelloWebhookTest {
 
@@ -101,6 +102,30 @@ class TrelloWebhookTest {
     void quadroForaDaVisaoTrelloEhIgnorado() throws Exception {
         enviar(evento("q-outro", "vendedor-1")).andExpect(content().string("QUADRO_DESCONHECIDO"));
         enviar("{\"action\": {}}").andExpect(content().string("QUADRO_DESCONHECIDO"));
+    }
+
+    @Test
+    void corpoAcimaDoTetoEhRecusadoAntesDaAssinatura() throws Exception {
+        String grande = "{\"model\": {\"id\": \"q-vendedor\"}, \"x\": \"" + "a".repeat(2048) + "\"}";
+        // assinado certo, e mesmo assim 413: o tamanho é checado primeiro
+        mvc.perform(post("/trello/webhook").contentType(MediaType.APPLICATION_JSON).content(grande)
+                        .header("X-Trello-Webhook", assinar(SEGREDO, grande)))
+                .andExpect(status().is(413));
+        // sem assinatura também 413, não 401: não chegou a ler o corpo inteiro para conferir
+        mvc.perform(post("/trello/webhook").contentType(MediaType.APPLICATION_JSON).content(grande))
+                .andExpect(status().is(413));
+    }
+
+    @Test
+    void lerAteNaoConfiaNoContentLength() throws Exception {
+        // corpo chunked (sem Content-Length): o teto vale pelo que é lido de fato
+        assertThat(TrelloWebhook.lerAte(new java.io.ByteArrayInputStream(new byte[11]), 10)).isNull();
+        assertThat(TrelloWebhook.lerAte(new java.io.ByteArrayInputStream(new byte[10]), 10)).hasSize(10);
+    }
+
+    @Test
+    void jsonInvalidoAssinadoResponde200ParaOTrelloNaoReenviar() throws Exception {
+        enviar("{\"model\": {\"id\": ").andExpect(content().string("JSON_INVALIDO"));
     }
 
     private ResultActions enviar(String corpo) throws Exception {
