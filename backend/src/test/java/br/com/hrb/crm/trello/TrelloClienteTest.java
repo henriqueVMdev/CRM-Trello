@@ -102,6 +102,31 @@ class TrelloClienteTest {
     }
 
     @Test
+    void esperaDe429NaoSeguraAsOutrasChamadas() throws Exception {
+        cliente.esperaInicial = Duration.ofMillis(1500);
+        roteiro.add(Resposta.limite());     // 1ª chamada leva 429 e espera 1,5 s
+        roteiro.add(Resposta.ok("{}"));     // 2ª chamada, feita durante a espera
+        roteiro.add(Resposta.ok("{}"));     // nova tentativa da 1ª
+
+        var primeira = java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                cliente.chamar("GET", "/boards/b1", null);
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        while (pedidos.isEmpty()) Thread.onSpinWait();
+
+        long inicio = System.currentTimeMillis();
+        cliente.chamar("GET", "/cards/c1", null);
+        long duracao = System.currentTimeMillis() - inicio;
+        primeira.get(5, java.util.concurrent.TimeUnit.SECONDS);
+
+        assertThat(duracao).isLessThan(1000);
+        assertThat(pedidos).extracting(Pedido::caminho).containsExactly("/1/boards/b1", "/1/cards/c1", "/1/boards/b1");
+    }
+
+    @Test
     void outroErroNaoTentaDeNovo() {
         roteiro.add(new Resposta(400, "invalid id", Map.of()));
 

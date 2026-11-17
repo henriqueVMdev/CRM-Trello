@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,8 @@ public class TrelloCliente {
     private final TrelloProps props;
 
     Duration esperaInicial = Duration.ofSeconds(1); // teste encurta
-    private Instant liberadoEm = Instant.EPOCH;
+    /** Até quando as chamadas ficam seguradas porque um x-rate-limit-*-remaining zerou. Compartilhado entre threads. */
+    private final AtomicReference<Instant> liberadoEm = new AtomicReference<>(Instant.EPOCH);
 
     TrelloCliente(ObjectMapper json, TrelloProps props) {
         this.json = json;
@@ -46,8 +48,8 @@ public class TrelloCliente {
      * @return a resposta, ou null se veio vazia
      * @throws TrelloErro status diferente de 2xx, ou 429 depois de todas as tentativas
      */
-    // ponytail: synchronized = uma chamada por vez no processo; sobra para 3 quadros e um worker de sync.
-    public synchronized JsonNode chamar(String metodo, String caminho, Object corpo) throws IOException, InterruptedException {
+    // Sem lock em volta da chamada: uma thread esperando 429 não segura as outras; só liberadoEm é compartilhado.
+    public JsonNode chamar(String metodo, String caminho, Object corpo) throws IOException, InterruptedException {
         HttpRequest req = HttpRequest.newBuilder(URI.create(props.apiUrl() + caminho))
                 // no cabeçalho, e não na URL, para o token não ir parar em log de proxy
                 .header("Authorization", "OAuth oauth_consumer_key=\"" + props.chave() + "\", oauth_token=\"" + props.token() + "\"")
@@ -60,7 +62,7 @@ public class TrelloCliente {
 
         Duration espera = esperaInicial;
         for (int tentativa = 1; ; tentativa++) {
-            Duration falta = Duration.between(Instant.now(), liberadoEm);
+            Duration falta = Duration.between(Instant.now(), liberadoEm.get());
             if (falta.isPositive()) Thread.sleep(falta);
 
             HttpResponse<String> r = http.send(req, HttpResponse.BodyHandlers.ofString());
@@ -84,7 +86,7 @@ public class TrelloCliente {
             long restante = h.firstValueAsLong(limite + "-remaining").orElse(1);
             long janelaMs = h.firstValueAsLong(limite + "-interval-ms").orElse(10_000);
             Instant fim = Instant.now().plusMillis(janelaMs);
-            if (restante <= 0 && fim.isAfter(liberadoEm)) liberadoEm = fim;
+            if (restante <= 0) liberadoEm.accumulateAndGet(fim, (atual, novo) -> novo.isAfter(atual) ? novo : atual);
         }
     }
 
