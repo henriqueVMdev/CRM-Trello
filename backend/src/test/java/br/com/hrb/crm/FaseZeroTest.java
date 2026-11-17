@@ -307,6 +307,12 @@ class FaseZeroTest {
     }
 
     @Test
+    void semTrelloConfiguradoNaoExisteRotaDeWebhook() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/trello/webhook").content("{}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void numeroInativoNaoAlerta() {
         db.sql("update numero_whatsapp set ativo = false").update();
         assertThat(monitor.problemas()).isEmpty();
