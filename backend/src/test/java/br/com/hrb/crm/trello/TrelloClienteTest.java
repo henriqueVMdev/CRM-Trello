@@ -17,6 +17,8 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -107,11 +109,16 @@ class TrelloClienteTest {
         assertThat(pedidos).hasSize(1);
     }
 
-    @Test
-    void limiteZeradoSeguraAProximaChamadaAteAJanelaPassar() throws Exception {
-        roteiro.add(new Resposta(200, "{}", Map.of(
-                "x-rate-limit-api-token-remaining", "0", "x-rate-limit-api-token-interval-ms", "300",
-                "x-rate-limit-api-key-remaining", "250", "x-rate-limit-api-key-interval-ms", "10000")));
+    /** Cada limite sozinho zerado, com os outros sobrando: tirar qualquer um da lista quebra o teste. */
+    @ParameterizedTest
+    @ValueSource(strings = {"x-rate-limit-api-token", "x-rate-limit-api-key", "x-rate-limit-member"})
+    void limiteZeradoSeguraAProximaChamadaAteAJanelaPassar(String zerado) throws Exception {
+        Map<String, String> cabecalhos = new java.util.HashMap<>();
+        for (String limite : List.of("x-rate-limit-api-token", "x-rate-limit-api-key", "x-rate-limit-member")) {
+            cabecalhos.put(limite + "-remaining", limite.equals(zerado) ? "0" : "50");
+            cabecalhos.put(limite + "-interval-ms", limite.equals(zerado) ? "300" : "10000");
+        }
+        roteiro.add(new Resposta(200, "{}", cabecalhos));
         roteiro.add(Resposta.ok("{}"));
 
         cliente.chamar("GET", "/boards/b1", null);

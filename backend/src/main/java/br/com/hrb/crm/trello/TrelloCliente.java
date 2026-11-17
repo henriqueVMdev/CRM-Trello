@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Chamadas à API do Trello com o token do usuário dedicado do sync.
- * Limites: 300 req/10 s por chave e 100 por token. Quando um x-rate-limit-*-remaining zera, a próxima chamada
+ * Limites: 300 req/10 s por chave e 100 por token, além do limite por membro. Quando um x-rate-limit-*-remaining zera, a próxima chamada
  * espera a janela dele; no 429, espera em dobro (1, 2, 4, 8, 16 s) e desiste na 6ª tentativa,
  * para a fila de saída tentar de novo depois.
  */
@@ -75,11 +75,14 @@ public class TrelloCliente {
         }
     }
 
-    /** Se o limite da chave ou do token zerou, segura a próxima chamada até a janela dele passar. */
+    /** Os x-rate-limit-* que o Trello manda: por token, por chave e por membro (regra 12). */
+    static final List<String> LIMITES = List.of("x-rate-limit-api-token", "x-rate-limit-api-key", "x-rate-limit-member");
+
+    /** Se algum limite zerou, segura a próxima chamada até a janela dele passar. */
     private void frear(HttpHeaders h) {
-        for (String limite : List.of("token", "key")) {
-            long restante = h.firstValueAsLong("x-rate-limit-api-" + limite + "-remaining").orElse(1);
-            long janelaMs = h.firstValueAsLong("x-rate-limit-api-" + limite + "-interval-ms").orElse(10_000);
+        for (String limite : LIMITES) {
+            long restante = h.firstValueAsLong(limite + "-remaining").orElse(1);
+            long janelaMs = h.firstValueAsLong(limite + "-interval-ms").orElse(10_000);
             Instant fim = Instant.now().plusMillis(janelaMs);
             if (restante <= 0 && fim.isAfter(liberadoEm)) liberadoEm = fim;
         }
