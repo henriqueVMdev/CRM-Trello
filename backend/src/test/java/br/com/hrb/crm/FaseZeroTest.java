@@ -2,6 +2,7 @@ package br.com.hrb.crm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -308,7 +309,7 @@ class FaseZeroTest {
 
     @Test
     void semTrelloConfiguradoNaoExisteRotaDeWebhook() throws Exception {
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/trello/webhook").content("{}"))
+        mvc.perform(post("/trello/webhook").content("{}"))
                 .andExpect(status().isNotFound());
     }
 

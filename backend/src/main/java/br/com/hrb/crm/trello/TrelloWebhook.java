@@ -100,7 +100,9 @@ class TrelloWebhook {
         if (props.usuarioSyncId().equals(texto(evento.path("action").path("idMemberCreator")))) {
             return Resultado.ECO;
         }
-        // ponytail: aplicar status e campos customizados entra com o modelo de orçamento (fase 2)
+        // ponytail: aplicar status e campos customizados entra com o modelo de orçamento (fase 2).
+        // O Trello reenvia entregas: action.id vira chave única na tabela de eventos de correção, gravado na mesma
+        // transação que aplica a correção, para a mesma edição não contar duas vezes (regra 6).
         return Resultado.ACEITO;
     }
 
